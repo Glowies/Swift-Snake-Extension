@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="google-signin-client_id" content="491250167307-58o5k8lnbal68vd1qlcbk64l5biqsjb8.apps.googleusercontent.com"><script src="https://apis.google.com/js/platform.js" async defer></script>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <title>Swift Snake</title>
+    <style>
+        .ui{position:fixed; top:-100px;left:-100px; opacity:0.7}
+    </style>
+</head>
+<body style="width:800px;">
+  <canvas id="renderCanvasEXT" style="width:100%;"></canvas>
+  <button id="viewEXT" class="btn btn-default btn-lg ui" type="button"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span></button>
+  <button id="pointsEXT" class="btn btn-default btn-lg ui" type="button">Points : 0</button>
+  <button id="highscoreEXT" class="btn btn-default btn-lg ui" type="button">Highscore : 0</button>
+  <button id="aboutEXT" class="btn btn-default btn-lg ui" type="button">?</button>
+  <div id="alertEXT" class="ui" style="opacity:1"></div>
+</body>
+
+<script src="js/socketio.js"></script>
+<script src="js/babylon.js"></script>
+<script src="js/baby.js"></script>
+<script src="js/download.js"></script>
+</html>
