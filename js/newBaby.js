@@ -1,12 +1,13 @@
 window.addEventListener('DOMContentLoaded', function(){
+    var data = Object();
     chrome.storage.sync.get("highScore",function(info){
         if(typeof(info.highScore) == "undefined"){
             chrome.storage.sync.set({'highScore': 0}, function(){});
             $('#highscoreEXT').text('Highscore : 0');
-            currentHS = 0;
+            data.currentHS = 0;
         }else{
             $('#highscoreEXT').text('Highscore : ' + info.highScore);
-            currentHS = info.highScore;
+            data.currentHS = info.highScore;
         }
     });
     chrome.identity.getAuthToken({'interactive': false}, function(token) {
@@ -27,24 +28,30 @@ window.addEventListener('DOMContentLoaded', function(){
                     fixUI();
 
                     $('#nickEnter').click(function(){
-                        enterNickname();
+                        enterNickname(data);
                     });
                 }else{
-                    nickname = info.nickname;
+                    data.nickname = info.nickname;
                 }
             });
         }
     });
-
-    int = 0;
-    pause = 0;
-    game = 0;
-    frameCount = 0;
+    data.int = 0;
+    data.pause = 0;
+    data.game = 0;
+    data.frameCount = 0;
     view = 0;
-    queue = [];
-    tempNick = "";
+    data.queue = [];
+    data.tempNick = "";
+    data.dir = "right";
+    data.snake = [];
+    data.length = 0;
 
-    connectSocket('https://snake-leaderboard.herokuapp.com/');
+    window.addEventListener("keydown",function(e){
+        setdir(e,data);
+    }, true);
+
+    connectSocket(data,'https://snake-leaderboard.herokuapp.com/');
 
     canvas = document.getElementById('renderCanvasEXT');
 
@@ -57,7 +64,7 @@ window.addEventListener('DOMContentLoaded', function(){
         camera.setPosition(new BABYLON.Vector3(5, 20, -25));
         camera.attachControl(canvas);
 
-        function adjustCamKeys() {
+        function adjustCamKeys(data) {
             var c = camera;
             c.keysUp = []; // t
             c.keysLeft = []; // f
@@ -65,17 +72,17 @@ window.addEventListener('DOMContentLoaded', function(){
             c.keysRight = []; // h
         }
 
-        adjustCamKeys();
+        adjustCamKeys(data);
 
         setSkyBox();
 
         var light = new BABYLON.HemisphericLight("Hemi0", new BABYLON.Vector3(-2, 3, -3), scene);
 
-        box = new BABYLON.Mesh.CreateBox('box', 1, scene);
+        data.box = new BABYLON.Mesh.CreateBox('box', 1, scene);
 
-        box.material = new BABYLON.StandardMaterial("texture1", scene);
-        box.material.diffuseColor = new BABYLON.Color3(0.2, 0.7, 0.2);
-        box.position = {
+        data.box.material = new BABYLON.StandardMaterial("texture1", scene);
+        data.box.material.diffuseColor = new BABYLON.Color3(0.2, 0.7, 0.2);
+        data.box.position = {
             x:-6,
             y:0.5,
             z:-6
@@ -93,29 +100,29 @@ window.addEventListener('DOMContentLoaded', function(){
         ground.material.specularColor = new BABYLON.Color3(0, 0, 0);      // LIGHT
         ground.material.ambientColor = new BABYLON.Color3(1,1,1);         // REFLECTION
 
-        createFood();
+        createFood(data);
 
-        wall = [];
+        data.wall = [];
 
-        wall[1] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
-        wall[1].position.x = 11.1;
-        wall[1].scaling.z = 23.2;
-        wall[2] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
-        wall[2].position.x = -11.1;
-        wall[2].scaling.z = 23.2;
-        wall[3] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
-        wall[3].position.z = 11.1;
-        wall[3].scaling.x = 23.2;
-        wall[4] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
-        wall[4].position.z = -11.1;
-        wall[4].scaling.x = 23.2;
+        data.wall[1] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
+        data.wall[1].position.x = 11.1;
+        data.wall[1].scaling.z = 23.2;
+        data.wall[2] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
+        data.wall[2].position.x = -11.1;
+        data.wall[2].scaling.z = 23.2;
+        data.wall[3] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
+        data.wall[3].position.z = 11.1;
+        data.wall[3].scaling.x = 23.2;
+        data.wall[4] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
+        data.wall[4].position.z = -11.1;
+        data.wall[4].scaling.x = 23.2;
 
-        for (var i = 1; i < wall.length; i++) {
-            wall[i].material = new BABYLON.StandardMaterial("texture4", scene);
-            wall[i].material.diffuseColor = new BABYLON.Color3(1.0, 0.0, 0.0);
+        for (var i = 1; i < data.wall.length; i++) {
+            data.wall[i].material = new BABYLON.StandardMaterial("texture4", scene);
+            data.wall[i].material.diffuseColor = new BABYLON.Color3(1.0, 0.0, 0.0);
         }
 
-        body = [];
+        data.body = [];
 
         return scene;
     };
@@ -124,7 +131,7 @@ window.addEventListener('DOMContentLoaded', function(){
     fixUI();
     scene = createScene();
 
-    scene.registerBeforeRender(function () {
+    scene.registerBeforeRender(function(){
         if (camera.beta > Math.PI / 2) {
             camera.beta = Math.PI / 2;
         }
@@ -141,145 +148,147 @@ window.addEventListener('DOMContentLoaded', function(){
 
     engine.runRenderLoop(function(){
         scene.render();
-        if(game){
-            if(frameCount > 1) {
-                move();
-                frameCount = 0;
+        if(data.game){
+            if(data.frameCount > 1) {
+                move(data);
+                data.frameCount = 0;
             }else{
-                frameCount++;
+                data.frameCount++;
             }
         }
     });
+
+    // Event binds
+    $('#highscoreEXT').click(function(){
+        this.blur();
+        $('#alertEXT').html('<div class="alert alert-info fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><b>Leaderboard </b> :<table id="scoreboard" class="table table-striped"></table><div id="scoreLoadWarn" class="alert alert-warning"><strong>Loading Scores</strong><br>Please wait... </div>Top 5 highscores worldwide. <br> Your nickname : <b>'+data.nickname+'</b></div>');
+        data.socket.emit('get ranks');
+        $('#alertEXT').width(250);
+        fixUI();
+    });
 });
 
-dir = "right";
-
-window.addEventListener("keydown",setdir, true);
-
-snake = [];
-length = 0;
-
-function move(){
-    if(queue.length > 0){
-        switch(queue[0]){
+function move(data){
+    if(data.queue.length > 0){
+        switch(data.queue[0]){
             case 'right':
-                if(dir != 'left'){
-                    dir = queue[0]
+                if(data.dir != 'left'){
+                    data.dir = data.queue[0]
                 }
                 break;
             case 'left':
-                if(dir != 'right'){
-                    dir = queue[0]
+                if(data.dir != 'right'){
+                    data.dir = data.queue[0]
                 }
                 break;
             case 'up':
-                if(dir != 'down'){
-                    dir = queue[0]
+                if(data.dir != 'down'){
+                    data.dir = data.queue[0]
                 }
                 break;
             case 'down':
-                if(dir != 'up'){
-                    dir = queue[0]
+                if(data.dir != 'up'){
+                    data.dir = data.queue[0]
                 }
                 break;
         }
     }
-    switch(queue.length){
+    switch(data.queue.length){
         case 2:
-            queue = [queue[1]];
+            data.queue = [data.queue[1]];
             break;
         case 1:
-            queue = [];
+            data.queue = [];
             break;
     }
 
-	switch (dir){
+	switch (data.dir){
 		case "right":
-			box.position.x++;
+            data.box.position.x++;
 			break;
 		case "left":
-			box.position.x--;
+            data.box.position.x--;
 			break;
 		case "up":
-			box.position.z++;
+            data.box.position.z++;
 			break;
 		case "down":
-			box.position.z--;
+            data.box.position.z--;
 			break;
 	}
-	snake.unshift({x: box.position.x, z: box.position.z});
-    //debugger;
-	for (var i=0; i < body.length; i++) {
+	data.snake.unshift({x: data.box.position.x, z: data.box.position.z});
+
+	for(var i=0; i < data.body.length; i++){
 		var d = i + 1;
-        body[i].position.x = snake[d].x;
-        body[i].position.z = snake[d].z;
+        data.body[i].position.x = data.snake[d].x;
+        data.body[i].position.z = data.snake[d].z;
 	}
 
-	if(box.intersectsMesh(food, false)){
-		addBody();
+	if(data.box.intersectsMesh(data.food, false)){
+		addBody(data);
 	}
-	if(box.intersectsMesh(wall[1], false)){
-		endGame();
+	if(data.box.intersectsMesh(data.wall[1], false)){
+		endGame(data);
 	}
-	if(box.intersectsMesh(wall[2], false)){
-		endGame();
+	if(data.box.intersectsMesh(data.wall[2], false)){
+		endGame(data);
 	}
-	if(box.intersectsMesh(wall[3], false)){
-		endGame();
+	if(data.box.intersectsMesh(data.wall[3], false)){
+		endGame(data);
 	}
-	if(box.intersectsMesh(wall[4], false)){
-		endGame();
+	if(data.box.intersectsMesh(data.wall[4], false)){
+		endGame(data);
 	}
-	for (var i = body.length-2; i > -1; i--) { // i = 1
-		if(box.intersectsMesh(body[i],false)){
-			endGame();
+	for (var i = data.body.length-2; i > -1; i--) { // i = 1
+		if(data.box.intersectsMesh(data.body[i],false)){
+			endGame(data);
             break;
 		}
-        if(food.intersectsMesh(body[i],false)){
-            food.dispose();
-            createFood();
+        if(data.food.intersectsMesh(data.body[i],false)){
+            data.food.dispose();
+            createFood(data);
         }
 	}
-    delete snake[length];
+    data.snake.pop();
 }
 
 
-function setdir(e){
-    if(queue.length < 2 && game){
+function setdir(e,data){
+    if(data.queue.length < 2 && data.game){
          switch(e.keyCode){
             case 37:
-                if(!queue.includes('left')) {
-                    queue.push('left');
+                if(!data.queue.includes('left')) {
+                    data.queue.push('left');
                 }
                 break;
             case 38:
-                if(!queue.includes('up')) {
-                    queue.push('up');
+                if(!data.queue.includes('up')) {
+                    data.queue.push('up');
                 }
                 break;
             case 39:
-                if(!queue.includes('right')) {
-                    queue.push('right');
+                if(!data.queue.includes('right')) {
+                    data.queue.push('right');
                 }
                 break;
             case 40:
-                if(!queue.includes('down')) {
-                    queue.push('down');
+                if(!data.queue.includes('down')) {
+                    data.queue.push('down');
                 }
                 break;
             case 65:
-                if(!queue.includes('left')) {
-                    queue.push('left');
+                if(!data.queue.includes('left')) {
+                    data.queue.push('left');
                 }
                 break;
             case 68:
-                if(!queue.includes('right')) {
-                    queue.push('right');
+                if(!data.queue.includes('right')) {
+                    data.queue.push('right');
                 }
                 break;
             case 87:
-                if(!queue.includes('up')) {
-                    queue.push('up');
+                if(!data.queue.includes('up')) {
+                    data.queue.push('up');
                 }
                 break;
             case 83:
@@ -290,42 +299,43 @@ function setdir(e){
         }
     }
     if(e.keyCode == 13){
-        if(typeof nickname == "undefined" || nickname == ""){
-            enterNickname();
+        if(typeof data.nickname == "undefined" || data.nickname == ""){
+            enterNickname(data);
         }else {
-            startGame();
+            startGame(data);
         }
     }
 }
 
-function enterNickname(){
+function enterNickname(data){
     var temp = $('#nickInput').val();
     if(temp.replace(/\s/g, '') != ""){
         tempNick = temp.replace(/</g," ").replace(/>/g," ").slice(0,15);
-        socket.emit('blacklist',tempNick);
+        data.socket.emit('blacklist',tempNick);
     }else{
         try{$('#tempEXT').remove();}catch(err){}
         $('.alert').append("<a id='tempEXT'><br><b>Plase enter a valid username...<br></b></a>")
     }
 }
 
-function connectSocket(ip){
-    socket = io.connect(ip);
+function connectSocket(dataMain,ip){
+    dataMain.socket = io.connect(ip);
 
-    socket.on('ranks',function(data){
+    dataMain.socket.emit('reset ranks');
+    dataMain.socket.on('ranks',function(data){
         $('#scoreboard').html('');
         $('#scoreLoadWarn').remove();
         for(var i=0;i<5;i++) {
             $('#scoreboard').append("<tr class='active'><td>"+data[i].name.replace(/</g," ").replace(/>/g," ").slice(0,15)+"</td><td>"+data[i].score+"</td></tr>");
         }
-        if(!(typeof nickname == "undefined" || nickname == "" || $('#chromesignin').length)){
+        if(!(typeof dataMain.nickname == "undefined" || dataMain.nickname == "" || $('#chromesignin').length)){
             $('#alertEXT').width(250);
         }
         try{$('#tempEXT').remove();}catch(err){}
         fixUI();
     });
 
-    socket.on('connect_error',function(){
+    dataMain.socket.on('connect_error',function(){
         $('#tempEXT').remove();
         $('#scoreboard').html('');
         $('#errorBox').html('');
@@ -334,11 +344,10 @@ function connectSocket(ip){
         $('#errorBox').html("<tr class='danger'><td>Connection Failed...</td></tr>");
     });
 
-    socket.on('blacklist',function(data){
-        console.log(data);
+    dataMain.socket.on('blacklist',function(data){
         if(data){
             chrome.storage.sync.set({'nickname': tempNick}, function(){});
-            nickname = tempNick;
+            dataMain.nickname = tempNick;
             $('#alertEXT').html('');
             $('#alertEXT').width(250);
             $('#alertEXT').height('100%');
@@ -350,51 +359,52 @@ function connectSocket(ip){
     });
 }
 
-function addBody(){
-	food.dispose();
-	body[length] = new BABYLON.Mesh.CreateBox('body', 0.9, scene);
-	body[length].position.y = 0.5;
-	body[length].position.x = 9999;
-	body[length].position.z = 9999;
-	body[length].material = new BABYLON.StandardMaterial("texture1", scene);
-    body[length].material.diffuseColor = new BABYLON.Color3(0.0, 1.2, 0.2);
+function addBody(data){
+    data.food.dispose();
+    data.body[data.length] = new BABYLON.Mesh.CreateBox('body', 0.9, scene);
+    data.body[data.length].position.y = 0.5;
+    data.body[data.length].position.x = 9999;
+    data.body[data.length].position.z = 9999;
+    data.body[data.length].material = new BABYLON.StandardMaterial("texture1", scene);
+    data.body[data.length].material.diffuseColor = new BABYLON.Color3(0.0, 1.2, 0.2);
 
-	length++;
+    data.length++;
+    data.snake.push({x:999,z:999});
 
-    $('#pointsEXT').text('Points : '+length);
+    $('#pointsEXT').text('Points : '+data.length);
     fixUI();
-	createFood();
+	createFood(data);
 
 }
 
-function createFood(){
-    food = new BABYLON.Mesh.CreateBox('food', 0.9, scene);
-    food.position.y = 0.5;
-    food.position.x = Math.floor(Math.random() * 21) - 10;
-    food.position.z = Math.floor(Math.random() * 21) - 10;
-    food.material = new BABYLON.StandardMaterial("texture2", scene);
-    food.material.diffuseColor = new BABYLON.Color3(0.0, 0.2, 1.2);
+function createFood(data){
+    data.food = new BABYLON.Mesh.CreateBox('food', 0.9, scene);
+    data.food.position.y = 0.5;
+    data.food.position.x = Math.floor(Math.random() * 21) - 10;
+    data.food.position.z = Math.floor(Math.random() * 21) - 10;
+    data.food.material = new BABYLON.StandardMaterial("texture2", scene);
+    data.food.material.diffuseColor = new BABYLON.Color3(0.0, 0.2, 1.2);
 }
 
-function endGame(){
+function endGame(data){
     chrome.storage.sync.get("highScore",function(info){
-        currentHS = info.highScore;
+        data.currentHS = info.highScore;
     });
-    if(length > currentHS){
-        chrome.storage.sync.set({'highScore': length}, function(){});
-        $('#highscoreEXT').text('Highscore : ' + length);
-        currentHS = length;
+    if(data.length > data.currentHS){
+        chrome.storage.sync.set({'highScore': data.length}, function(){});
+        $('#highscoreEXT').text('Highscore : ' + data.length);
+        data.currentHS = data.length;
     }
     //clearInteval(int);
-    game = 0;
-    box.position.x = -6;
-    box.position.z = -6;
-    $('#alertEXT').html('<div class="alert alert-info fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><h4><b>GAME OVER</b></h4>Your final score is: <strong>'+length+'</strong><br><br><b>Global Leaderboard</b> :<table id="scoreboard" class="table table-striped"></table><div id="scoreLoadWarn" class="alert alert-warning"><strong>Loading Scores</strong><br>Please wait... </div>Press <kbd>ENTER</kbd> to play again... </div>');
-    tempLength = length;
+    data.game = 0;
+    data.box.position.x = -6;
+    data.box.position.z = -6;
+    $('#alertEXT').html('<div class="alert alert-info fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><h4><b>GAME OVER</b></h4>Your final score is: <strong>'+data.length+'</strong><br><br><b>Global Leaderboard</b> :<table id="scoreboard" class="table table-striped"></table><div id="scoreLoadWarn" class="alert alert-warning"><strong>Loading Scores</strong><br>Please wait... </div>Press <kbd>ENTER</kbd> to play again... </div>');
+    data.tempLength = data.length;
 
     chrome.identity.getAuthToken({'interactive': true}, function(token) {
         if(typeof token != "undefined") {
-            socket.emit('check highscore', {"name": nickname, "score": tempLength, "token": token});
+            data.socket.emit('check highscore', {"name": data.nickname, "score": data.tempLength, "token": token});
         }else{
             $('#scoreboard').html("<tr class='danger'><td>Bind your Google Account to Google Chrome in order to submit your highscores. <br><button id='bind' class='btn btn-default btn-lg' type='button'>Bind Account</button></td></tr>");
             $('#bind').click(function(){
@@ -403,18 +413,18 @@ function endGame(){
         }
         fixUI();
 
-        food.dispose();
-        createFood();
+        data.food.dispose();
+        createFood(data);
 
-        tempLength = 0;
+        data.tempLength = 0;
     });
-    length = 0;
-    for (var i = 0; i < body.length; i++) {
-        body[i].dispose();
+    data.length = 0;
+    for (var i = 0; i < data.body.length; i++) {
+        data.body[i].dispose();
     }
-    body = [];
-    queue = [];
-    dir = "right";
+    data.body = [];
+    data.queue = [];
+    data.dir = "right";
     $('#pointsEXT').text('Points : 0');
 }
 
@@ -543,21 +553,13 @@ $('#aboutEXT').click(function(){
     chrome.tabs.create({url:"http://www.oktaycomu.com/about.php"});
 });
 
-$('#highscoreEXT').click(function(){
-    this.blur();
-    $('#alertEXT').html('<div class="alert alert-info fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><b>Leaderboard </b> :<table id="scoreboard" class="table table-striped"></table><div id="scoreLoadWarn" class="alert alert-warning"><strong>Loading Scores</strong><br>Please wait... </div>Top 5 highscores worldwide. <br> Your nickname : <b>'+nickname+'</b></div>');
-    socket.emit('get ranks');
-    $('#alertEXT').width(250);
-    fixUI();
-});
-
-function startGame(){
+function startGame(data){
     $('#alertEXT').html('');
     fixUI();
-    if(!game) {
-        dir = "right";
+    if(!data.game) {
+        data.dir = "right";
         //int = setInterval(move, 50);
-        game = 1;
+        data.game = 1;
     }
 }
 
