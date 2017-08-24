@@ -46,6 +46,7 @@ window.addEventListener('DOMContentLoaded', function(){
     data.dir = "right";
     data.snake = [];
     data.length = 0;
+    data.body = [];
 
     window.addEventListener("keydown",function(e){
         setdir(e,data);
@@ -121,8 +122,6 @@ window.addEventListener('DOMContentLoaded', function(){
             data.wall[i].material = new BABYLON.StandardMaterial("texture4", scene);
             data.wall[i].material.diffuseColor = new BABYLON.Color3(1.0, 0.0, 0.0);
         }
-
-        data.body = [];
 
         return scene;
     };
@@ -224,30 +223,21 @@ function move(data){
         data.body[i].position.z = data.snake[d].z;
 	}
 
-	if(data.box.intersectsMesh(data.food, false)){
+	// If the head collides with a food
+	if(data.box.position.x == data.food.position.x && data.box.position.z == data.food.position.z){
 		addBody(data);
 	}
-	if(data.box.intersectsMesh(data.wall[1], false)){
-		endGame(data);
-	}
-	if(data.box.intersectsMesh(data.wall[2], false)){
-		endGame(data);
-	}
-	if(data.box.intersectsMesh(data.wall[3], false)){
-		endGame(data);
-	}
-	if(data.box.intersectsMesh(data.wall[4], false)){
-		endGame(data);
-	}
+
+	// If the head hits one of the side walls
+	if(Math.abs(data.box.position.x) > 10 || Math.abs(data.box.position.z) > 10){
+        endGame(data);
+    }
+    // If the head collides with one of the body pieces
 	for (var i = data.body.length-2; i > -1; i--) { // i = 1
-		if(data.box.intersectsMesh(data.body[i],false)){
+		if(data.box.position.x == data.body[i].position.x && data.box.position.z == data.body[i].position.z){
 			endGame(data);
             break;
 		}
-        if(data.food.intersectsMesh(data.body[i],false)){
-            data.food.dispose();
-            createFood(data);
-        }
 	}
     data.snake.pop();
 }
@@ -382,8 +372,21 @@ function createFood(data){
     data.food.position.y = 0.5;
     data.food.position.x = Math.floor(Math.random() * 21) - 10;
     data.food.position.z = Math.floor(Math.random() * 21) - 10;
+    while(foodIntersectsBody(data)){
+        data.food.position.x = Math.floor(Math.random() * 21) - 10;
+        data.food.position.z = Math.floor(Math.random() * 21) - 10;
+    }
     data.food.material = new BABYLON.StandardMaterial("texture2", scene);
     data.food.material.diffuseColor = new BABYLON.Color3(0.0, 0.2, 1.2);
+}
+
+function foodIntersectsBody(data){
+    for(var i=0;i<data.body.length-2;i++){
+        if(data.food.position.x == data.body[i].position.x && data.food.position.z == data.body[i].position.z){
+            return true
+        }
+    }
+    return false
 }
 
 function endGame(data){
