@@ -9,19 +9,30 @@ window.addEventListener('DOMContentLoaded', function(){
             currentHS = info.highScore;
         }
     });
-    chrome.storage.sync.get("nickname",function(info) {
-        if(typeof(info.nickname) == "undefined" || info.nickname.replace(/\s/g, '') == "") {
-            $('#alertEXT').width('100%');
-            $('#alertEXT').height('100%');
-            $('#alertEXT').html('<div class="alert alert-danger" style="width:100%;height:100%;z-index:99"><br><br><br><br><br><b>Nickname:</b><br><div class="input-group"><input id="nickInput" type="text" class="form-control" placeholder="Derpina"><span class="input-group-btn"><button id="nickEnter" class="btn btn-default" type="button">Enter...</button></span></div></div>');
-            fixUI();
-
-            $('#nickEnter').click(function(){
-                enterNickname();
+    chrome.identity.getAuthToken({'interactive': false}, function(token) {
+        if(typeof token == "undefined"){
+            $('#alertEXT').html('<div class="alert alert-danger" style="width:100%;height:100%;z-index:99;opacity:0.92"><br><br><br><br><br><b>You need to sign-in to Google Chrome...<br></b><br><div class="input-group"><span class="input-group-btn"><button id="chromesignin" class="btn btn-default" type="button">Sign-In</button></div>');
+            $('#chromesignin').click(function(){
+                chrome.identity.getAuthToken({interactive:true},function(){})
             });
-
+            $('#alertEXT').width(800);
+            $('#alertEXT').height(500);
+            fixUI();
         }else{
-            nickname = info.nickname;
+            chrome.storage.sync.get("nickname",function(info) {
+                if(typeof(info.nickname) == "undefined" || info.nickname.replace(/\s/g, '') == "") {
+                    $('#alertEXT').html('<div class="alert alert-danger" style="width:100%;height:100%;z-index:99;opacity:0.92"><br><br><br><br><br><b>Nickname:</b><br><div class="input-group"><input id="nickInput" type="text" class="form-control" placeholder="Derpina"><span class="input-group-btn"><button id="nickEnter" class="btn btn-default" type="button">Enter...</button></span></div><br><span id="errorBox"></span></div>');
+                    $('#alertEXT').width(800);
+                    $('#alertEXT').height(500);
+                    fixUI();
+
+                    $('#nickEnter').click(function(){
+                        enterNickname();
+                    });
+                }else{
+                    nickname = info.nickname;
+                }
+            });
         }
     });
 
@@ -30,6 +41,8 @@ window.addEventListener('DOMContentLoaded', function(){
     game = 0;
     frameCount = 0;
     view = 0;
+    queue = [];
+    tempNick = "";
 
     connectSocket('https://snake-leaderboard.herokuapp.com/');
 
@@ -86,16 +99,16 @@ window.addEventListener('DOMContentLoaded', function(){
 
         wall[1] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
         wall[1].position.x = 11.1;
-        wall[1].scaling.z = 23;
+        wall[1].scaling.z = 23.2;
         wall[2] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
         wall[2].position.x = -11.1;
-        wall[2].scaling.z = 23;
+        wall[2].scaling.z = 23.2;
         wall[3] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
         wall[3].position.z = 11.1;
-        wall[3].scaling.x = 23;
+        wall[3].scaling.x = 23.2;
         wall[4] = new BABYLON.Mesh.CreateBox('wall', 1, scene);
         wall[4].position.z = -11.1;
-        wall[4].scaling.x = 23;
+        wall[4].scaling.x = 23.2;
 
         for (var i = 1; i < wall.length; i++) {
             wall[i].material = new BABYLON.StandardMaterial("texture4", scene);
@@ -107,7 +120,7 @@ window.addEventListener('DOMContentLoaded', function(){
         return scene;
     };
 
-    $('#alertEXT').html('<div class="alert alert-danger fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><h4><b>Swift Snake</b></h4>Collect food and evade your tail.<b><hr>Snake : <span class="glyphicon glyphicon-stop" aria-hidden="true" style="color:#81be2a"></span> <br> Food : <span class="glyphicon glyphicon-stop" aria-hidden="true" style="color:blue"></span><hr></b>Press <kbd>ENTER</kbd> to begin... </div>');
+    $('#alertEXT').html('<div class="alert alert-danger fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><h4><b>Swift Snake</b></h4>Collect food and evade your tail.<hr><b>Controls: &nbsp;</b><kbd>Arrow Keys</kbd> or <kbd>WASD</kbd><b><hr>Snake : <span class="glyphicon glyphicon-stop" aria-hidden="true" style="color:#81be2a"></span> <br> Food : <span class="glyphicon glyphicon-stop" aria-hidden="true" style="color:blue"></span><hr></b>Press <kbd>ENTER</kbd> to begin... </div>');
     fixUI();
     scene = createScene();
 
@@ -147,6 +160,39 @@ snake = [];
 length = 0;
 
 function move(){
+    if(queue.length > 0){
+        switch(queue[0]){
+            case 'right':
+                if(dir != 'left'){
+                    dir = queue[0]
+                }
+                break;
+            case 'left':
+                if(dir != 'right'){
+                    dir = queue[0]
+                }
+                break;
+            case 'up':
+                if(dir != 'down'){
+                    dir = queue[0]
+                }
+                break;
+            case 'down':
+                if(dir != 'up'){
+                    dir = queue[0]
+                }
+                break;
+        }
+    }
+    switch(queue.length){
+        case 2:
+            queue = [queue[1]];
+            break;
+        case 1:
+            queue = [];
+            break;
+    }
+
 	switch (dir){
 		case "right":
 			box.position.x++;
@@ -195,61 +241,51 @@ function move(){
         }
 	}
     delete snake[length];
-    cd = 0;
 }
 
-cd = 0;
 
 function setdir(e){
-    if(cd == 0){
+    if(queue.length < 2 && game){
          switch(e.keyCode){
             case 37:
-                if(dir!="right"){
-                    dir = "left"; 
+                if(!queue.includes('left')) {
+                    queue.push('left');
                 }
-                cd = 1;
                 break;
             case 38:
-                if(dir!="down"){
-                    dir = "up";
+                if(!queue.includes('up')) {
+                    queue.push('up');
                 }
-                cd = 1;
                 break;
             case 39:
-                if(dir!="left"){
-                    dir = "right";
+                if(!queue.includes('right')) {
+                    queue.push('right');
                 }
-                cd = 1;
                 break;
             case 40:
-                if(dir!="up"){
-                    dir = "down";
+                if(!queue.includes('down')) {
+                    queue.push('down');
                 }
-                cd = 1;
                 break;
             case 65:
-                if(dir!="right"){
-                    dir = "left";
+                if(!queue.includes('left')) {
+                    queue.push('left');
                 }
-                cd = 1;
                 break;
             case 68:
-                if(dir!="left"){
-                    dir = "right";
+                if(!queue.includes('right')) {
+                    queue.push('right');
                 }
-                cd = 1;
                 break;
             case 87:
-                if(dir!="down"){
-                    dir = "up";
+                if(!queue.includes('up')) {
+                    queue.push('up');
                 }
-                cd = 1;
                 break;
             case 83:
-                if(dir!="up"){
-                    dir = "down";
+                if(!queue.includes('down')) {
+                    queue.push('down');
                 }
-                cd = 1;
                 break;
         }
     }
@@ -265,13 +301,11 @@ function setdir(e){
 function enterNickname(){
     var temp = $('#nickInput').val();
     if(temp.replace(/\s/g, '') != ""){
-        nickname = temp.replace(/</g," ").replace(/>/g," ").slice(0,15);
-        chrome.storage.sync.set({'nickname': nickname}, function(){});
-        $('#alertEXT').html('');
-        $('#alertEXT').width(250);
-        fixUI();
+        tempNick = temp.replace(/</g," ").replace(/>/g," ").slice(0,15);
+        socket.emit('blacklist',tempNick);
     }else{
-        $('.alert').append('<br><b>Plase enter a valid username...</b>')
+        try{$('#tempEXT').remove();}catch(err){}
+        $('.alert').append("<a id='tempEXT'><br><b>Plase enter a valid username...<br></b></a>")
     }
 }
 
@@ -284,14 +318,35 @@ function connectSocket(ip){
         for(var i=0;i<5;i++) {
             $('#scoreboard').append("<tr class='active'><td>"+data[i].name.replace(/</g," ").replace(/>/g," ").slice(0,15)+"</td><td>"+data[i].score+"</td></tr>");
         }
-        $('#alertEXT').width(250);
+        if(!(typeof nickname == "undefined" || nickname == "" || $('#chromesignin').length)){
+            $('#alertEXT').width(250);
+        }
+        try{$('#tempEXT').remove();}catch(err){}
         fixUI();
     });
 
     socket.on('connect_error',function(){
+        $('#tempEXT').remove();
         $('#scoreboard').html('');
+        $('#errorBox').html('');
         $('#scoreLoadWarn').remove();
         $('#scoreboard').html("<tr class='danger'><td>Connection Failed...</td></tr>");
+        $('#errorBox').html("<tr class='danger'><td>Connection Failed...</td></tr>");
+    });
+
+    socket.on('blacklist',function(data){
+        console.log(data);
+        if(data){
+            chrome.storage.sync.set({'nickname': tempNick}, function(){});
+            nickname = tempNick;
+            $('#alertEXT').html('');
+            $('#alertEXT').width(250);
+            $('#alertEXT').height('100%');
+            fixUI();
+        }else{
+            try{$('#tempEXT').remove();}catch(err){}
+            $('.alert').append("<a id='tempEXT'><br><b>That name has been suspended...<br></b></a>");
+        }
     });
 }
 
@@ -299,8 +354,8 @@ function addBody(){
 	food.dispose();
 	body[length] = new BABYLON.Mesh.CreateBox('body', 0.9, scene);
 	body[length].position.y = 0.5;
-	body[length].position.x = box.position.x;
-	body[length].position.z = box.position.z;
+	body[length].position.x = 9999;
+	body[length].position.z = 9999;
 	body[length].material = new BABYLON.StandardMaterial("texture1", scene);
     body[length].material.diffuseColor = new BABYLON.Color3(0.0, 1.2, 0.2);
 
@@ -335,17 +390,30 @@ function endGame(){
     box.position.x = -6;
     box.position.z = -6;
     $('#alertEXT').html('<div class="alert alert-info fade in"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><h4><b>GAME OVER</b></h4>Your final score is: <strong>'+length+'</strong><br><br><b>Global Leaderboard</b> :<table id="scoreboard" class="table table-striped"></table><div id="scoreLoadWarn" class="alert alert-warning"><strong>Loading Scores</strong><br>Please wait... </div>Press <kbd>ENTER</kbd> to play again... </div>');
-    socket.emit('check highscore', {"name":nickname,"score":length});
-    fixUI();
+    tempLength = length;
 
-    food.dispose();
-    createFood();
+    chrome.identity.getAuthToken({'interactive': true}, function(token) {
+        if(typeof token != "undefined") {
+            socket.emit('check highscore', {"name": nickname, "score": tempLength, "token": token});
+        }else{
+            $('#scoreboard').html("<tr class='danger'><td>Bind your Google Account to Google Chrome in order to submit your highscores. <br><button id='bind' class='btn btn-default btn-lg' type='button'>Bind Account</button></td></tr>");
+            $('#bind').click(function(){
+                chrome.tabs.create({url:"chrome://chrome-signin/?access_point=6&reason=0"});
+            });
+        }
+        fixUI();
 
+        food.dispose();
+        createFood();
+
+        tempLength = 0;
+    });
     length = 0;
     for (var i = 0; i < body.length; i++) {
         body[i].dispose();
     }
-    body= [];
+    body = [];
+    queue = [];
     dir = "right";
     $('#pointsEXT').text('Points : 0');
 }
@@ -382,6 +450,32 @@ $('#viewEXT').click(function(){
         cameraPositionAnimation.setKeys(positionKeys);
         camera.animations.push(cameraPositionAnimation);
 
+        var cameraFovAnimation = new BABYLON.Animation("", "fov", 30, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        var fovKeys = [];
+        fovKeys.push({
+            frame: 0,
+            value: camera.fov
+        });
+        fovKeys.push({
+            frame: 30,
+            value: 0.1
+        });
+        cameraFovAnimation.setKeys(fovKeys);
+        camera.animations.push(cameraFovAnimation);
+
+        var cameraRadiusAnimation = new BABYLON.Animation("", "radius", 30, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        var radiusKeys = [];
+        radiusKeys.push({
+            frame: 0,
+            value: camera.radius
+        });
+        radiusKeys.push({
+            frame: 30,
+            value: 264
+        });
+        cameraRadiusAnimation.setKeys(radiusKeys);
+        camera.animations.push(cameraRadiusAnimation);
+
         scene.beginAnimation(camera, 0, 30, false);
     }else{
         view = 0;
@@ -412,6 +506,33 @@ $('#viewEXT').click(function(){
         });
         cameraPositionAnimation.setKeys(positionKeys);
         camera.animations.push(cameraPositionAnimation);
+
+        var cameraFovAnimation = new BABYLON.Animation("", "fov", 30, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        var fovKeys = [];
+        fovKeys.push({
+            frame: 0,
+            value: camera.fov
+        });
+        fovKeys.push({
+            frame: 30,
+            value: 0.8
+        });
+        cameraFovAnimation.setKeys(fovKeys);
+        camera.animations.push(cameraFovAnimation);
+
+        var cameraRadiusAnimation = new BABYLON.Animation("", "radius", 30, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+        var radiusKeys = [];
+        radiusKeys.push({
+            frame: 0,
+            value: camera.radius
+        });
+        radiusKeys.push({
+            frame: 30,
+            value: 33
+        });
+        cameraRadiusAnimation.setKeys(radiusKeys);
+        camera.animations.push(cameraRadiusAnimation);
+
 
         scene.beginAnimation(camera, 0, 30, false);
     }
