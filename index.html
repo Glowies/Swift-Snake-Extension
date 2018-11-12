@@ -2,27 +2,34 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="google-signin-client_id" content="491250167307-58o5k8lnbal68vd1qlcbk64l5biqsjb8.apps.googleusercontent.com"><script src="https://apis.google.com/js/platform.js" async defer></script>
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="css/bootstrap-reboot.min.css" rel="stylesheet">
+    <link href="css/bootstrap-grid.min.css" rel="stylesheet">
+    <link href="css/stylesheet.css" rel="stylesheet">
+
+    <script src="js/firebase-app.js"></script>
+    <script src="js/firebase-auth.js"></script>
 
     <script src="js/jquery.js"></script>
+    <script src="js/popper.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    <script src="js/bootstrap.bundle.min.js"></script>
     <title>Swift Snake</title>
-    <style>
-        .ui{position:fixed; top:-100px;left:-100px; opacity:0.7}
-    </style>
 </head>
 <body style="width:800px;">
   <canvas id="renderCanvasEXT" style="width:100%;"></canvas>
-  <button id="viewEXT" class="btn btn-default btn-lg ui" type="button"><span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span></button>
-  <button id="pointsEXT" class="btn btn-default btn-lg ui" type="button">Points : 0</button>
-  <button id="highscoreEXT" class="btn btn-default btn-lg ui" type="button">Highscore : 0</button>
-  <button id="aboutEXT" class="btn btn-default btn-lg ui" type="button">?</button>
+  <button id="viewEXT" class="btn btn-outline-primary btn-lg ui" type="button">2D</button>
+  <button id="profileEXT" class="btn btn-outline-primary btn-lg ui sign-in" type="button">
+      <img src="assets/google/btn_google_signin_dark_normal_web@2x.png" width="191" />
+  </button>
+  <button id="highscoreEXT" class="btn btn-outline-primary btn-lg ui" type="button">Highscores</button>
+  <button id="aboutEXT" class="btn btn-outline-primary btn-lg ui" type="button" style="width:50px">?</button>
   <div id="alertEXT" class="ui" style="opacity:1"></div>
 </body>
 
-<script src="js/socketio.js"></script>
+<script src="js/socket.io.js"></script>
 <script src="js/babylon.js"></script>
-<script src="js/newBaby.js"></script>
+<script src="js/comm.js"></script>
+<script src="js/user.js"></script>
+<script src="js/newerBaby.js"></script>
 </html>

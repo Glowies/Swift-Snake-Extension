@@ -10,9 +10,9 @@ window.addEventListener('DOMContentLoaded', function(){
             data.currentHS = info.highScore;
         }
     });
-    chrome.identity.getAuthToken({'interactive': false}, function(token) {
+    chrome.identity.getAuthToken({'interactive': false}, function(token){
         if(typeof token == "undefined"){
-            $('#alertEXT').html('<div class="alert alert-danger" style="width:100%;height:100%;z-index:99;opacity:0.92"><br><br><br><br><br><b>You need to sign-in to Google Chrome...<br></b><br><div class="input-group"><span class="input-group-btn"><button id="chromesignin" class="btn btn-default" type="button">Sign-In</button></div>');
+            $('#alertEXT').html('<div class="alert alert-danger" style="width:100%;height:100%;z-index:99;opacity:0.92"><br><br><br><br><br><b>You need to sign-in to Google Chrome...<br></b>Internet connection required !<br><div class="input-group"><span class="input-group-btn"><button id="chromesignin" class="btn btn-default" type="button">Sign-In</button></div>');
             $('#chromesignin').click(function(){
                 chrome.identity.getAuthToken({interactive:true},function(){})
             });
@@ -82,7 +82,7 @@ window.addEventListener('DOMContentLoaded', function(){
         data.box = new BABYLON.Mesh.CreateBox('box', 1, scene);
 
         data.box.material = new BABYLON.StandardMaterial("texture1", scene);
-        data.box.material.diffuseColor = new BABYLON.Color3(0.2, 0.7, 0.2);
+        data.box.material.diffuseColor = new BABYLON.Color3(140/255,157/255,178/255);
         data.box.position = {
             x:-6,
             y:0.5,
@@ -97,7 +97,7 @@ window.addEventListener('DOMContentLoaded', function(){
         ground.material.diffuseTexture.hasAlpha = false;
 
         scene.ambientColor = new BABYLON.Color3(1, 1, 1);                 // TO
-        ground.material.diffuseColor = new BABYLON.Color3(0, 0, 0);       // PREVENT
+        ground.material.diffuseColor = new BABYLON.Color3(140/255,157/255,178/255);       // PREVENT
         ground.material.specularColor = new BABYLON.Color3(0, 0, 0);      // LIGHT
         ground.material.ambientColor = new BABYLON.Color3(1,1,1);         // REFLECTION
 
@@ -120,7 +120,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
         for (var i = 1; i < data.wall.length; i++) {
             data.wall[i].material = new BABYLON.StandardMaterial("texture4", scene);
-            data.wall[i].material.diffuseColor = new BABYLON.Color3(1.0, 0.0, 0.0);
+            data.wall[i].material.diffuseColor = new BABYLON.Color3(140/255,157/255,178/255);
         }
 
         return scene;
@@ -311,7 +311,6 @@ function enterNickname(data){
 function connectSocket(dataMain,ip){
     dataMain.socket = io.connect(ip);
 
-    dataMain.socket.emit('reset ranks');
     dataMain.socket.on('ranks',function(data){
         $('#scoreboard').html('');
         $('#scoreLoadWarn').remove();
@@ -553,7 +552,7 @@ $('#viewEXT').click(function(){
 
 $('#aboutEXT').click(function(){
     this.blur();
-    chrome.tabs.create({url:"http://www.oktaycomu.com/about.php"});
+    chrome.tabs.create({url:"https://www.oktaycomu.com/about.php"});
 });
 
 function startGame(data){
